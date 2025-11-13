@@ -40,12 +40,12 @@ class MedicoModel extends Medico {
       _$MedicoModelFromJson(json);
 
   Map<String, dynamic> toJson() {
-    // Para enviar al backend, solo envía los campos necesarios
+    // Para enviar al backend - Spring Boot espera espeId directamente
     return {
       'medCmp': medCmp,
       'medNombre': medNombre,
       'medApellidos': medApellidos,
-      'medEspecialidadId': medEspecialidadId,
+      'espeId': medEspecialidadId,
     };
   }
 
