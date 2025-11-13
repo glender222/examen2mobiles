@@ -13,12 +13,26 @@ class PacienteInitial extends PacienteState {}
 class PacienteLoading extends PacienteState {}
 
 class PacienteLoaded extends PacienteState {
-  final List<Paciente> pacientes;
+  final List<Paciente> allPacientes;
+  final List<Paciente> filteredPacientes;
 
-  const PacienteLoaded(this.pacientes);
+  const PacienteLoaded({
+    required this.allPacientes,
+    required this.filteredPacientes,
+  });
 
   @override
-  List<Object?> get props => [pacientes];
+  List<Object?> get props => [allPacientes, filteredPacientes];
+
+  PacienteLoaded copyWith({
+    List<Paciente>? allPacientes,
+    List<Paciente>? filteredPacientes,
+  }) {
+    return PacienteLoaded(
+      allPacientes: allPacientes ?? this.allPacientes,
+      filteredPacientes: filteredPacientes ?? this.filteredPacientes,
+    );
+  }
 }
 
 class PacienteOperationSuccess extends PacienteState {
