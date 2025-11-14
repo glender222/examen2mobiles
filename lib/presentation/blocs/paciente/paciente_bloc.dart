@@ -22,6 +22,7 @@ class PacienteBloc extends Bloc<PacienteEvent, PacienteState> {
     on<CreatePacienteEvent>(_onCreatePaciente);
     on<UpdatePacienteEvent>(_onUpdatePaciente);
     on<DeletePacienteEvent>(_onDeletePaciente);
+    on<SearchPacienteEvent>(_onSearchPaciente);
   }
 
   Future<void> _onLoadPacientes(
@@ -32,7 +33,10 @@ class PacienteBloc extends Bloc<PacienteEvent, PacienteState> {
     final result = await getAllPacientes();
     result.fold(
       (failure) => emit(PacienteError(failure.message)),
-      (pacientes) => emit(PacienteLoaded(pacientes)),
+      (pacientes) => emit(PacienteLoaded(
+        allPacientes: pacientes,
+        filteredPacientes: pacientes,
+      )),
     );
   }
 
@@ -70,5 +74,23 @@ class PacienteBloc extends Bloc<PacienteEvent, PacienteState> {
       (failure) => emit(PacienteError(failure.message)),
       (_) => emit(const PacienteOperationSuccess('Paciente eliminado exitosamente')),
     );
+  }
+
+  void _onSearchPaciente(
+    SearchPacienteEvent event,
+    Emitter<PacienteState> emit,
+  ) {
+    if (state is PacienteLoaded) {
+      final currentState = state as PacienteLoaded;
+      final query = event.query.toLowerCase();
+
+      final filteredPacientes = currentState.allPacientes.where((paciente) {
+        final nombreCompleto = paciente.nombreCompleto.toLowerCase();
+        final dni = paciente.pacDni.toLowerCase();
+        return nombreCompleto.contains(query) || dni.contains(query);
+      }).toList();
+
+      emit(currentState.copyWith(filteredPacientes: filteredPacientes));
+    }
   }
 }

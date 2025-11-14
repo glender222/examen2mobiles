@@ -19,8 +19,32 @@ class PacientesPage extends StatelessWidget {
   }
 }
 
-class _PacientesView extends StatelessWidget {
+class _PacientesView extends StatefulWidget {
   const _PacientesView();
+
+  @override
+  State<_PacientesView> createState() => _PacientesViewState();
+}
+
+class _PacientesViewState extends State<_PacientesView> {
+  final TextEditingController _searchController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _searchController.addListener(_onSearchChanged);
+  }
+
+  @override
+  void dispose() {
+    _searchController.removeListener(_onSearchChanged);
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _onSearchChanged() {
+    context.read<PacienteBloc>().add(SearchPacienteEvent(_searchController.text));
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -29,59 +53,75 @@ class _PacientesView extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Pacientes'),
-        backgroundColor: colorScheme.primary,
-        foregroundColor: colorScheme.onPrimary,
       ),
-      body: BlocConsumer<PacienteBloc, PacienteState>(
-        listener: (context, state) {
-          if (state is PacienteOperationSuccess) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(state.message)),
-            );
-            context.read<PacienteBloc>().add(LoadPacientes());
-          } else if (state is PacienteError) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(state.message),
-                backgroundColor: colorScheme.error,
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+            child: TextField(
+              controller: _searchController,
+              decoration: const InputDecoration(
+                hintText: 'Buscar paciente por nombre o DNI...',
+                prefixIcon: Icon(Icons.search),
               ),
-            );
-          }
-        },
-        builder: (context, state) {
-          if (state is PacienteLoading) {
-            return const Center(child: CircularProgressIndicator());
-          }
-
-          if (state is PacienteLoaded) {
-            if (state.pacientes.isEmpty) {
-              return Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.people_outline, size: 64, color: colorScheme.outline),
-                    const SizedBox(height: 16),
-                    Text(
-                      'No hay pacientes registrados',
-                      style: Theme.of(context).textTheme.titleMedium,
+            ),
+          ),
+          Expanded(
+            child: BlocConsumer<PacienteBloc, PacienteState>(
+              listener: (context, state) {
+                if (state is PacienteOperationSuccess) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(state.message)),
+                  );
+                  context.read<PacienteBloc>().add(LoadPacientes());
+                } else if (state is PacienteError) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(state.message),
+                      backgroundColor: colorScheme.error,
                     ),
-                  ],
-                ),
-              );
-            }
-
-            return ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: state.pacientes.length,
-              itemBuilder: (context, index) {
-                final paciente = state.pacientes[index];
-                return _PacienteCard(paciente: paciente);
+                  );
+                }
               },
-            );
-          }
+              builder: (context, state) {
+                if (state is PacienteLoading) {
+                  return const Center(child: CircularProgressIndicator());
+                }
 
-          return const SizedBox.shrink();
-        },
+                if (state is PacienteLoaded) {
+                  if (state.filteredPacientes.isEmpty) {
+                    return Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.people_outline, size: 64, color: colorScheme.outline),
+                          const SizedBox(height: 16),
+                          Text(
+                            _searchController.text.isEmpty
+                                ? 'No hay pacientes registrados'
+                                : 'No se encontraron pacientes',
+                            style: Theme.of(context).textTheme.titleMedium,
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+
+                  return ListView.builder(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    itemCount: state.filteredPacientes.length,
+                    itemBuilder: (context, index) {
+                      final paciente = state.filteredPacientes[index];
+                      return _PacienteCard(paciente: paciente);
+                    },
+                  );
+                }
+
+                return const SizedBox.shrink();
+              },
+            ),
+          ),
+        ],
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () async {
@@ -104,53 +144,62 @@ class _PacienteCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
     final colorScheme = Theme.of(context).colorScheme;
 
     return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: colorScheme.primaryContainer,
-          child: Icon(Icons.person, color: colorScheme.onPrimaryContainer),
-        ),
-        title: Text(paciente.nombreCompleto),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+      elevation: 2,
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Row(
           children: [
-            Text('DNI: ${paciente.pacDni}'),
-            if (paciente.pacTelefono != null) Text('Tel: ${paciente.pacTelefono}'),
-          ],
-        ),
-        trailing: PopupMenuButton(
-          itemBuilder: (context) => [
-            const PopupMenuItem(
-              value: 'edit',
-              child: Row(
+            CircleAvatar(
+              radius: 28,
+              backgroundColor: colorScheme.primary,
+              child: const Icon(Icons.person, color: Colors.white, size: 32),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(Icons.edit),
-                  SizedBox(width: 8),
-                  Text('Editar'),
+                  Text(
+                    paciente.nombreCompleto,
+                    style: textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'DNI: ${paciente.pacDni}',
+                    style: textTheme.bodyMedium,
+                  ),
+                  if (paciente.pacTelefono != null)
+                    Text(
+                      'Tel: ${paciente.pacTelefono}',
+                      style: textTheme.bodyMedium,
+                    ),
                 ],
               ),
             ),
-            const PopupMenuItem(
-              value: 'delete',
-              child: Row(
-                children: [
-                  Icon(Icons.delete, color: Colors.red),
-                  SizedBox(width: 8),
-                  Text('Eliminar', style: TextStyle(color: Colors.red)),
-                ],
-              ),
+            PopupMenuButton<String>(
+              onSelected: (value) {
+                if (value == 'edit') {
+                  context.push('/pacientes/editar', extra: {'paciente': paciente});
+                } else if (value == 'delete') {
+                  _showDeleteDialog(context, paciente);
+                }
+              },
+              itemBuilder: (context) => [
+                const PopupMenuItem(
+                  value: 'edit',
+                  child: Text('Editar'),
+                ),
+                const PopupMenuItem(
+                  value: 'delete',
+                  child: Text('Eliminar', style: TextStyle(color: Colors.red)),
+                ),
+              ],
             ),
           ],
-          onSelected: (value) {
-            if (value == 'edit') {
-              context.push('/pacientes/editar', extra: {'paciente': paciente});
-            } else if (value == 'delete') {
-              _showDeleteDialog(context, paciente);
-            }
-          },
         ),
       ),
     );
@@ -160,17 +209,17 @@ class _PacienteCard extends StatelessWidget {
     showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Confirmar eliminación'),
-        content: Text('¿Está seguro de eliminar a ${paciente.nombreCompleto}?'),
+        title: const Text('Confirmar Eliminación'),
+        content: Text('¿Está seguro de que desea eliminar a ${paciente.nombreCompleto}?'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
+            onPressed: () => Navigator.of(dialogContext).pop(),
             child: const Text('Cancelar'),
           ),
           FilledButton(
             onPressed: () {
               context.read<PacienteBloc>().add(DeletePacienteEvent(paciente.pacDni));
-              Navigator.pop(dialogContext);
+              Navigator.of(dialogContext).pop();
             },
             style: FilledButton.styleFrom(
               backgroundColor: Theme.of(context).colorScheme.error,

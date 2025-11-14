@@ -36,3 +36,12 @@ class DeletePacienteEvent extends PacienteEvent {
   @override
   List<Object?> get props => [dni];
 }
+
+class SearchPacienteEvent extends PacienteEvent {
+  final String query;
+
+  const SearchPacienteEvent(this.query);
+
+  @override
+  List<Object?> get props => [query];
+}
